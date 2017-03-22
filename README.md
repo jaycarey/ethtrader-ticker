@@ -35,5 +35,5 @@ bash bin/start.sh <<subreddit>> <<username>> <<password>> <<clientId>> <<secret>
 *password* - password of the bot.
 *clientId* - the clientId from the application created above.
 *secret* - the secret from the application created above.
-*resourceUrl* - The base of the url the ticker's configuration is located at, e.g. for the configuration above: https://github.com/jaycarey/ethtrader-ticker-conf/blob/master/ would be the base.
+*resourceUrl* - The base of the url the ticker's configuration is located at, e.g. for the configuration above: https://raw.githubusercontent.com/jaycarey/ethtrader-ticker-conf/master/ would be the base.
 
