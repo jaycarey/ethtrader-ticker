@@ -25,7 +25,6 @@ fun main(args: Array<String>) {
                 val reddit = Reddit(client, args[0])
                 val test = args.contains("--test")
 
-
                 val data = reader.read(config.dataPoints)
                 config.tickers.entries.forEach {
                     try {

@@ -23,6 +23,8 @@ class TickerEthConfig(getResourceUrl: (String) -> URL) {
     val tickers = tickerConf.keys().map { it to TickerConf(tickerConf, it) }.toMap()
 }
 
+enum class Sort { asc, desc }
+
 class TickerConf(config: Config, name: String) {
     private val tickerConf = config.getConfig(name)
     val font = tickerConf.getString("font")
@@ -32,9 +34,15 @@ class TickerConf(config: Config, name: String) {
     val backgroundHighlight = tickerConf.getString("backgroundHighlight").toColor()
     val positiveColor = tickerConf.getString("positiveColor").toColor()
     val negativeColor = tickerConf.getString("negativeColor").toColor()
+    val joiner = tickerConf.getString("joiner")
     val segments = tickerConf.getStringList("segments")
+    val enableImages = tickerConf.getStringOr("enableImages", null)?.toBoolean()
     val top = tickerConf.getString("top")
+    val scrollDuration = tickerConf.getStringOr("scrollDuration", "30")!!
     val cssSelector = tickerConf.getString("cssSelector")
+    val showRank = tickerConf.getStringOr   ("showRank", "false")?.toBoolean()
+    val sort: Sort? = tickerConf.getStringOr("sort", null)?.let { Sort.valueOf(it) }
+    val maxItems: Int? = tickerConf.getStringOr("maxItems", null)?.toInt()
 }
 
 fun String.toColor(): Color = if (startsWith("#") && length == 9) java.lang.Long.decode(this).let {
@@ -55,6 +63,7 @@ class ProviderConf(config: Config, name: String) {
     private val providerConf = config.getConfig(name)
     private val fieldsConf = providerConf.getConfig("fields")
     val url = providerConf.getString("url")
+    val filter = providerConf.getStringOr("filter", null)
     val fields: Map<String, String> = fieldsConf.keys().map { it to fieldsConf.getString(it) }.toMap()
 }
 

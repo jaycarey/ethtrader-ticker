@@ -2,18 +2,14 @@ package org.ethtrader.ticker
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import org.glassfish.jersey.client.ClientProperties
-import java.lang.System.clearProperty
-import java.lang.System.setProperty
 import java.math.BigDecimal
-import java.net.URL
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
-import javax.ws.rs.client.Client
 import javax.ws.rs.client.ClientBuilder
 
 class DataReader(providers: Map<String, ProviderConf>) {
@@ -27,12 +23,26 @@ class DataReader(providers: Map<String, ProviderConf>) {
             .registerKotlinModule()
 
     private val providerFunctions = providers.map { provider ->
+        var cache = mapOf<String, JsonNode>()
         provider.key to { values: List<String> ->
             try {
-                val response = readObject(provider.value.url.format(*values.toTypedArray()))
-                println("JSON Response form provider [${provider.key}], $values: $response")
+                val url = provider.value.url.format(*values.toTypedArray())
+                var rootNode = cache[url]
+                if (rootNode == null) {
+                    rootNode = readObject(url)
+                    cache += url to rootNode
+                }
+                if (provider.value.filter != null) {
+                    rootNode = rootNode.find {
+                        it.at(provider.value.filter).asText() == values.last()
+                    }
+                }
+                if (rootNode is ArrayNode && rootNode.size() == 1) {
+                    rootNode = rootNode.first()
+                }
+                println("JSON Response form provider [${provider.key}], $values: $rootNode")
                 println("Reading fields: ${provider.value.fields}")
-                response.parseFields(provider.value.fields)
+                rootNode?.parseFields(provider.value.fields)
             } catch (e: Throwable) {
                 println("Unexpected exception: " + e.printStackTrace())
                 mapOf<String, BigDecimal>()
@@ -54,16 +64,21 @@ class DataReader(providers: Map<String, ProviderConf>) {
                 it.key to try {
                     val text = at(it.value).asText()
                     if (text.isNullOrEmpty()) BigDecimal.ZERO else BigDecimal(text)
-                } catch(t: Throwable) {
+                } catch (t: Throwable) {
                     null
                 }
             }.toMap()
 
-    private fun readObject(url: String, attempts: Int = 3): JsonNode {
-        println("Fetching from URL: $url")
+    private fun readObject(url: String): JsonNode {
         return retry(times = 10) {
-            Thread.sleep(1000)
-            val json = client.build().target(url).request().get(String::class.java)
+            Thread.sleep(300)
+            val urlAndQuery = url.split("?")
+            var target = client.build().target(urlAndQuery[0])
+            target = urlAndQuery.getOrNull(1)?.split(",")?.map { it.split("=") }?.fold(target) { t, k -> t.queryParam(k[0], k[1]) } ?: target
+            println("Fetching from URL: $target")
+            val request = target.request()
+            val response = request.get()
+            val json = response.readEntity(String::class.java)
             objectMapper.readTree(json)
         }
     }
